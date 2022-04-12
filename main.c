@@ -33,43 +33,28 @@ void imprimeSequencia(int *acessos, int *modifica, int n);
 
 int main()
 {
-  int i, j = 0, n, aux, cont = 0, *acessos;
-  FILE *fp;
-  fp = fopen("nums.txt", "r");
-
+  int aux, *acessos;
   srand(time(NULL));
 
   int ram[LENRAM];
   ElemCache cache[LENCACHE];
   int vet[LENRAM];
   iniciaRam(ram);
+
+  aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
+  int modifica[aux];
+  acessos = gerarAcessos(aux, ram, modifica);
+
+  iniciaCache(cache);
+
+  imprimeSequencia(acessos, modifica, aux);
   imprimeRam(ram);
 
-  // aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
-  // int modifica[aux];
-  // acessos = gerarAcessos(aux, ram, modifica);
-
-  // iniciaCache(cache);
-
-  // imprimeSequencia(acessos, modifica, aux);
-  // imprimeRam(ram);
-
-  // // printf("\nRAM: ");
-  // // for (i = 0; i < LENRAM; i++)
-  // //   printf("%d ", ram[i]);
-  // // printf("\n");
-
-  // // testar depois : 7* 4 4* 2* 15 2 1
   // //  aleatorio(acessos, ram, cache, modifica, aux);
-  // fifo(acessos, ram, cache, modifica, aux);
-  // imprimeRam(ram);
+  fifo(acessos, ram, cache, modifica, aux);
+  imprimeRam(ram);
 
-  // // printf("\n\nRAM: ");
-  // // for (i = 0; i < LENRAM; i++)
-  // //   printf("%d ", ram[i]);
-  // // printf("\n");
-
-  // printf("\n\nHIT: %d MISS: %d", hit, miss);
+  printf("\n\nHIT: %d MISS: %d", hit, miss);
 }
 
 void writeBack(ElemCache *cache, int *ram, int indice)
@@ -132,7 +117,7 @@ void imprimeCache(ElemCache *cache)
       printf("linha %d: ", i + 1);
       for (int j = 0; j < BLOCO; j++)
       {
-        printf("%4d ", cache[i].indice[j]);
+        printf("%4d ", cache[i].elemento[j]);
       }
       printf("\n");
     }
@@ -160,56 +145,98 @@ void imprimePila(int *vetfifo, int n)
   printf("\n");
 }
 
+// algoritmos de substituição FIFO
 void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdAcesso)
 {
-  int mod, i, j, k, l, len, indiceCache, aux, z, x;
+  int mod, i, j, k, l, len, indiceCache, aux, z, x, ale;
 
   int vetfifo[LENCACHE];
   l = 0;
   for (i = 0; i < qtdAcesso; i++)
   {
-    mod = acessos[i] % BLOCO;
-    len = (acessos[i] + BLOCO) - mod;
-    aux = verificaCache(cache);
-    z = varreCache(cache, acessos[i], &x);
-
-    if (z > -1)
+    // verifico se o valor deve ser modificado
+    if (modifica[i] == 0)
     {
-      if (modifica[i] = 1)
-        cache[z].elemento[x] = cache[z].elemento[x] + 1;
-      hit++;
+      // não é modificado, imprimo um guia para validar a execução
+      printf("Acesso ao valor, na RAM, %d no indice %d:\n", ram[acessos[i]], acessos[i]);
     }
     else
     {
-      if (aux > -1 && l < LENCACHE)
+      // é modificado, gera um numero aleatorio e imprimo um guia para validar a execução
+      ale = randomInt(100, 1000 + LENRAM);
+      printf("Acesso ao valor, na RAM, %d no indice %d, valor modificado é %d:\n", ram[acessos[i]], acessos[i], ale);
+    }
+    // resto da divisão do indice do acesso pelo tamanho do bloco
+    mod = acessos[i] % BLOCO;
+    // variavel que vai delimitar o for para preencher o bloco da cache
+    len = (acessos[i] + BLOCO) - mod;
+    // verifica o primeiro bloco não ocupado da cache, caso não exista retorna -1
+    aux = verificaCache(cache);
+    // varre a cache procurando o elemento que está na fila, caso ele esteja na cache
+    // retorna o inidice que ele está que fica armazenado em z e em x o indice do bloco
+    z = varreCache(cache, acessos[i], &x);
+
+    // o elemento está na cache
+    if (z > -1)
+    {
+      // verifico se esse elemento deve ser modificado
+      if (modifica[i] == 1)
+        // modifico o elemento
+        cache[z].elemento[x] = ale;
+
+      printf("Valor na cache %d:\n", cache[z].elemento[x]);
+      // conto 1 hit
+      hit++;
+    }
+    // o elemento ñ está na cache
+    else
+    {
+      // se aux é maior que -1 significa que existe um bloco(s) disponivel na cache
+      if (aux > -1)
       {
+        // indiceCache vai receber o valor que vamos utilizar na cache
         indiceCache = aux;
+        // vet fifo recebe o valor da posição 0
         vetfifo[l] = aux;
+        // incrementa o indice do vetor para realizar o fifo
         l++;
+        // define o bloco da cache como ocupado
         cache[indiceCache].ocupada = 1;
       }
       else
       {
+        // indiceCache vai receber o valor que vamos utilizar na cache
         indiceCache = removePrimeiro(vetfifo);
+        // chama a função writeBack para atualizar os valores na RAM
         writeBack(cache, ram, indiceCache);
       }
+      // j vai começar do primeiro indice do bloco da RAM e vai até o ultimo indice
       for (j = (acessos[i] - mod), k = 0; j < len; j++, k++)
       {
-        // verifica se o elemento vai ser modificado
+        // o bloco da cache vai receber os indices do bloco da RAM
         cache[indiceCache].indice[k] = j;
+        // verifica se o elemento vai ser modificado e se está no elemento do bloco
         if (modifica[i] == 1 && acessos[i] == j)
         {
-          cache[indiceCache].elemento[k] = randomInt(0, LENRAM);
+          // o elemento na cache vai receber um valor aleatorio
+          cache[indiceCache].elemento[k] = ale;
+          // marco que aquele elemento foi modificado
           cache[indiceCache].m[k] = 1;
         }
         else
         {
+          // caso o elemento ñ precisa de modificação carrego o indice do bloco da RAM
+          // no indice equivalente da cache
           cache[indiceCache].elemento[k] = ram[j];
         }
       }
+      // conto um miss
       miss++;
     }
+    // imprimo o estado atual da cache
     imprimeCache(cache);
+    // imprimo a quantidade de hit e miss
+    printf("\nHIT: %d MISS: %d\n", hit, miss);
   }
 }
 
@@ -233,8 +260,8 @@ void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdA
     // se estiver na cache conta um acerto
     if (z > -1)
     {
-      if (modifica[i] = 1)
-        cache[z].elemento[x] = cache[z].elemento[x] + 1;
+      if (modifica[i] == 1)
+        cache[z].elemento[x] = randomInt(100, 1000 + LENRAM);
       hit++;
     }
     // caso contrario armazena na cache ou realiza a subistituição
@@ -260,7 +287,7 @@ void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdA
         cache[indiceCache].indice[k] = j;
         if (modifica[i] == 1 && acessos[i] == j)
         {
-          cache[indiceCache].elemento[k] = randomInt(0, LENRAM);
+          cache[indiceCache].elemento[k] = randomInt(100, 1000 + LENRAM);
           cache[indiceCache].m[k] = 1;
         }
         else
@@ -292,8 +319,8 @@ int *gerarAcessos(int n, int *ram, int *modifica)
 // inicia memora RAM
 void iniciaRam(int *ram)
 {
-  for(int i = 0; i < LENRAM; i++)
-    ram[i] = randomInt(0, LENRAM);
+  for (int i = 0; i < LENRAM; i++)
+    ram[i] = randomInt(100, 1000 + LENRAM);
 }
 
 // inicia memoria cache
@@ -311,6 +338,7 @@ void iniciaCache(ElemCache *cache)
   }
 }
 
+// imprime a sequencia gerada aleatoriamente
 void imprimeSequencia(int *acessos, int *modifica, int n)
 {
   printf("Acessos: %d\n", n);
