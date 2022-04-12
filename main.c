@@ -13,25 +13,21 @@ int contCacheImp = 1, hit = 0, miss = 0, modVet[10] = {1, 0, 0, 0, 1, 0, 0, 1, 1
 
 typedef struct
 {
-  int elemento;
-} ElemRam;
-
-typedef struct
-{
   int ocupada;
   int elemento[BLOCO];
   int m[BLOCO];
   int indice[BLOCO];
 } ElemCache;
 
-void writeBack(ElemCache *cache, ElemRam *ram, int indice);
+void writeBack(ElemCache *cache, int *ram, int indice);
 int verificaCache(ElemCache *cache);
-void fifo(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int qtdAcesso);
-void aleatorio(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int qtdAcesso);
-void imprimeRam(ElemRam *ram);
+void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdAcesso);
+void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdAcesso);
+void imprimeRam(int *ram);
 void imprimeCache(ElemCache *cache);
 int randomInt(int min, int max);
-int *gerarAcessos(int n, ElemRam *ram, int *modifica);
+int *gerarAcessos(int n, int *ram, int *modifica);
+void iniciaRam(int *ram);
 void iniciaCache(ElemCache *cache);
 void imprimeSequencia(int *acessos, int *modifica, int n);
 
@@ -43,46 +39,46 @@ int main()
 
   srand(time(NULL));
 
-  ElemRam ram[LENRAM];
+  int ram[LENRAM];
   ElemCache cache[LENCACHE];
   int vet[LENRAM];
-  for (i = 0; i < LENRAM; i++)
-    fscanf(fp, "%d", &ram[i].elemento);
-
-  aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
-  int modifica[aux];
-  acessos = gerarAcessos(aux, ram, modifica);
-
-  iniciaCache(cache);
-
-  imprimeSequencia(acessos, modifica, aux);
+  iniciaRam(ram);
   imprimeRam(ram);
 
-  // printf("\nRAM: ");
-  // for (i = 0; i < LENRAM; i++)
-  //   printf("%d ", ram[i].elemento);
-  // printf("\n");
+  // aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
+  // int modifica[aux];
+  // acessos = gerarAcessos(aux, ram, modifica);
 
-  // testar depois : 7* 4 4* 2* 15 2 1
-  //  aleatorio(acessos, ram, cache, modifica, aux);
-  fifo(acessos, ram, cache, modifica, aux);
-  imprimeRam(ram);
+  // iniciaCache(cache);
 
-  // printf("\n\nRAM: ");
-  // for (i = 0; i < LENRAM; i++)
-  //   printf("%d ", ram[i].elemento);
-  // printf("\n");
+  // imprimeSequencia(acessos, modifica, aux);
+  // imprimeRam(ram);
 
-  printf("\n\nHIT: %d MISS: %d", hit, miss);
+  // // printf("\nRAM: ");
+  // // for (i = 0; i < LENRAM; i++)
+  // //   printf("%d ", ram[i]);
+  // // printf("\n");
+
+  // // testar depois : 7* 4 4* 2* 15 2 1
+  // //  aleatorio(acessos, ram, cache, modifica, aux);
+  // fifo(acessos, ram, cache, modifica, aux);
+  // imprimeRam(ram);
+
+  // // printf("\n\nRAM: ");
+  // // for (i = 0; i < LENRAM; i++)
+  // //   printf("%d ", ram[i]);
+  // // printf("\n");
+
+  // printf("\n\nHIT: %d MISS: %d", hit, miss);
 }
 
-void writeBack(ElemCache *cache, ElemRam *ram, int indice)
+void writeBack(ElemCache *cache, int *ram, int indice)
 {
   for (int i = 0; i < BLOCO; i++)
   {
     if (cache[indice].m[i] == 1)
     {
-      ram[cache[indice].indice[i]].elemento = cache[indice].elemento[i];
+      ram[cache[indice].indice[i]] = cache[indice].elemento[i];
     }
   }
 }
@@ -115,14 +111,14 @@ int varreCache(ElemCache *cache, int elemento, int *b)
   return -1;
 }
 
-void imprimeRam(ElemRam *ram)
+void imprimeRam(int *ram)
 {
   printf("\n----- RAM -----\n");
   for (int i = 0; i < LENRAM; i++)
     printf("%4d ", i);
   printf("\n");
   for (int i = 0; i < LENRAM; i++)
-    printf("%4d ", ram[i].elemento);
+    printf("%4d ", ram[i]);
   printf("\n");
 }
 
@@ -164,7 +160,7 @@ void imprimePila(int *vetfifo, int n)
   printf("\n");
 }
 
-void fifo(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int qtdAcesso)
+void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdAcesso)
 {
   int mod, i, j, k, l, len, indiceCache, aux, z, x;
 
@@ -203,12 +199,12 @@ void fifo(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int qtdAc
         cache[indiceCache].indice[k] = j;
         if (modifica[i] == 1 && acessos[i] == j)
         {
-          cache[indiceCache].elemento[k] = ram[j].elemento + 1;
+          cache[indiceCache].elemento[k] = randomInt(0, LENRAM);
           cache[indiceCache].m[k] = 1;
         }
         else
         {
-          cache[indiceCache].elemento[k] = ram[j].elemento;
+          cache[indiceCache].elemento[k] = ram[j];
         }
       }
       miss++;
@@ -218,7 +214,7 @@ void fifo(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int qtdAc
 }
 
 // acesso aleatorio
-void aleatorio(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int qtdAcesso)
+void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int qtdAcesso)
 {
   int mod, i, j, k, len, indiceCache, aux, z, x;
 
@@ -264,12 +260,12 @@ void aleatorio(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int 
         cache[indiceCache].indice[k] = j;
         if (modifica[i] == 1 && acessos[i] == j)
         {
-          cache[indiceCache].elemento[k] = ram[j].elemento + 1;
+          cache[indiceCache].elemento[k] = randomInt(0, LENRAM);
           cache[indiceCache].m[k] = 1;
         }
         else
         {
-          cache[indiceCache].elemento[k] = ram[j].elemento;
+          cache[indiceCache].elemento[k] = ram[j];
         }
       }
       miss++;
@@ -280,7 +276,7 @@ void aleatorio(int *acessos, ElemRam *ram, ElemCache *cache, int *modifica, int 
 // bloco de código para gerar acessos na memoria RAM
 int randomInt(int min, int max) { return min + rand() % (max + 1 - min); }
 
-int *gerarAcessos(int n, ElemRam *ram, int *modifica)
+int *gerarAcessos(int n, int *ram, int *modifica)
 {
   int i, *vet;
   vet = malloc(sizeof(int) * n);
@@ -291,6 +287,13 @@ int *gerarAcessos(int n, ElemRam *ram, int *modifica)
   }
 
   return vet;
+}
+
+// inicia memora RAM
+void iniciaRam(int *ram)
+{
+  for(int i = 0; i < LENRAM; i++)
+    ram[i] = randomInt(0, LENRAM);
 }
 
 // inicia memoria cache
