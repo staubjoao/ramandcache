@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BLOCO 2
-#define LENRAM 16
-#define LENCACHE 2
-#define NUMACESSOMIN 5
-#define NUMACESSOMAX 10
+#define BLOCO 4
+#define LENRAM 1024
+#define LENCACHE 32
+#define NUMACESSOMIN 20
+#define NUMACESSOMAX 25
 
 int contCacheImp = 1, hit = 0, miss = 0, modVet[10] = {1, 0, 0, 0, 1, 0, 0, 1, 1, 0};
 
@@ -50,8 +50,8 @@ int main()
   imprimeSequencia(acessos, modifica, aux);
   imprimeRam(ram);
 
-  aleatorio(acessos, ram, cache, modifica, aux);
-  // fifo(acessos, ram, cache, modifica, aux);
+  // aleatorio(acessos, ram, cache, modifica, aux);
+  fifo(acessos, ram, cache, modifica, aux);
   imprimeRam(ram);
 
   printf("\n\nHIT: %d MISS: %d", hit, miss);
@@ -113,10 +113,10 @@ void imprimeRam(int *ram)
 {
   printf("\n----- RAM -----\n");
   // percorre todos os elementos
-  for (int i = 0; i < LENRAM; i++)
-    // imprime cada indice
-    printf("%4d ", i);
-  printf("\n");
+  // for (int i = 0; i < LENRAM; i++)
+  //   // imprime cada indice
+  //   printf("%4d ", i);
+  // printf("\n");
   // percorre todos os elementos
   for (int i = 0; i < LENRAM; i++)
     // imprime todos os valores
