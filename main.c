@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 
 #define BLOCO 4
 #define LENRAM 1024
@@ -33,6 +34,7 @@ void imprimeSequencia(int *acessos, int *modifica, int n);
 
 int main()
 {
+  setlocale(LC_ALL, "Portuguese_Brasil");
   int op, aux, *acessos, i;
   srand(time(NULL));
 
@@ -81,7 +83,8 @@ int main()
 
   imprimeRam(ram);
 
-  printf("\n\nHIT: %d MISS: %d", hit, miss);
+  printf("\n\nHIT: %d MISS: %d\n", hit, miss);
+  system("pause");
 }
 
 // função de write back, recebe a memoria cache, a ram e o indice que deve ser modificado
