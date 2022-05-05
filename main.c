@@ -50,7 +50,7 @@ int main()
   iniciaCache(cache);
 
   imprimeSequencia(acessos, modifica, aux);
-  imprimeRam(ram);
+  //imprimeRam(ram);
   int vetfifo[LENCACHE], l = 0;
 
   for (i = 0; i < aux; i++)
@@ -81,10 +81,10 @@ int main()
     }
   }
 
-  imprimeRam(ram);
+  //imprimeRam(ram);
 
   printf("\n\nHIT: %d MISS: %d\n", hit, miss);
-  system("pause");
+  //system("pause");
 }
 
 // função de write back, recebe a memoria cache, a ram e o indice que deve ser modificado
