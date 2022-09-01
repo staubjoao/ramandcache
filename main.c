@@ -7,6 +7,7 @@
 #define BLOCO 4
 #define LENRAM 1024
 #define LENCACHE 32
+#define QUANTIDADEPROCESSADORES 4
 #define NUMACESSOMIN 32
 #define NUMACESSOMAX 50
 
@@ -18,8 +19,10 @@ typedef struct
   int elemento[BLOCO];
   int m[BLOCO];
   int indice[BLOCO];
+  char marcador;
 } ElemCache;
 
+void leituraAcessos(int **acessos, int n);
 void writeBack(ElemCache *cache, int *ram, int indice);
 int verificaCache(ElemCache *cache);
 void imprimeRam(int *ram);
@@ -35,56 +38,75 @@ void imprimeSequencia(int *acessos, int *modifica, int n);
 int main()
 {
   setlocale(LC_ALL, "Portuguese_Brasil");
-  int op, aux, *acessos, i;
+  int op, aux, i, n;
   srand(time(NULL));
 
   int ram[LENRAM];
-  ElemCache cache[LENCACHE];
+  ElemCache cache[QUANTIDADEPROCESSADORES][LENCACHE];
   int vet[LENRAM];
   iniciaRam(ram);
 
-  aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
-  int modifica[aux];
-  acessos = gerarAcessos(aux, ram, modifica);
+  // aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
+  // int modifica[aux];
+  // acessos = gerarAcessos(aux, ram, modifica);
 
-  iniciaCache(cache);
+  // inicia todos os processadores
+  for (i = 0; i < QUANTIDADEPROCESSADORES; i++)
+    iniciaCache(cache[i]);
 
-  imprimeSequencia(acessos, modifica, aux);
-  //imprimeRam(ram);
-  int vetfifo[LENCACHE], l = 0;
+  printf("Digite a quantidade de acessos que deseja fazer: ");
+  scanf("%d", &n);
+  int acessos[n][2];
 
-  for (i = 0; i < aux; i++)
+  leituraAcessos(acessos, n);
+
+  // imprimeSequencia(acessos, modifica, aux);
+  // // imprimeRam(ram);
+  // int vetfifo[LENCACHE], l = 0;
+
+  // for (i = 0; i < aux; i++)
+  // {
+  //   if (verificaCache(cache) != -1)
+  //   {
+  //     fifo(acessos, ram, cache, modifica, i, vetfifo, &l);
+  //   }
+  //   else
+  //   {
+  //     do
+  //     {
+  //       printf("Qual método de subistituição deseja utilizar?\n1 - aleatorio\n2 - fifo\nDigite a opção: ");
+  //       scanf("%d", &op);
+  //       if (op == 1)
+  //       {
+  //         aleatorio(acessos, ram, cache, modifica, i);
+  //       }
+  //       else if (op == 2)
+  //       {
+  //         fifo(acessos, ram, cache, modifica, i, vetfifo, &l);
+  //       }
+  //       else
+  //       {
+  //         printf("Opção invalida!\n");
+  //       }
+  //     } while (op != 1 && op != 2);
+  //   }
+  // }
+
+  // // imprimeRam(ram);
+
+  // printf("\n\nHIT: %d MISS: %d\n", hit, miss);
+  // // system("pause");
+}
+
+void eituraAcessos(int **acessos, int n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
   {
-    if (verificaCache(cache) != -1)
-    {
-      fifo(acessos, ram, cache, modifica, i, vetfifo, &l);
-    }
-    else
-    {
-      do
-      {
-        printf("Qual método de subistituição deseja utilizar?\n1 - aleatorio\n2 - fifo\nDigite a opção: ");
-        scanf("%d", &op);
-        if (op == 1)
-        {
-          aleatorio(acessos, ram, cache, modifica, i);
-        }
-        else if (op == 2)
-        {
-          fifo(acessos, ram, cache, modifica, i, vetfifo, &l);
-        }
-        else
-        {
-          printf("Opção invalida!\n");
-        }
-      } while (op != 1 && op != 2);
-    }
+    printf("Digite o %d° acesso a memoria e o processador (%d a %d) que realizar o acesso, nesse formado ex: 456, 1: ", i + 1, 0, LENRAM);
+    scanf("%d %d", &acessos[i][0], &acessos[i][1]);
   }
-
-  //imprimeRam(ram);
-
-  printf("\n\nHIT: %d MISS: %d\n", hit, miss);
-  //system("pause");
 }
 
 // função de write back, recebe a memoria cache, a ram e o indice que deve ser modificado
