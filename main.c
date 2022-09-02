@@ -7,11 +7,12 @@
 #define BLOCO 4
 #define LENRAM 1024
 #define LENCACHE 32
-#define QUANTIDADEPROCESSADORES 4
+#define QTDCPU 4
 #define NUMACESSOMIN 32
 #define NUMACESSOMAX 50
 
 int contCacheImp = 1, hit = 0, miss = 0, modVet[10] = {1, 0, 0, 0, 1, 0, 0, 1, 1, 0};
+int cont = 0;
 
 typedef struct
 {
@@ -22,17 +23,18 @@ typedef struct
   char marcador;
 } ElemCache;
 
-void leituraAcessos(int **acessos, int n);
+void leituraAcessos(int n, int acessos[n][3]);
 void writeBack(ElemCache *cache, int *ram, int indice);
 int verificaCache(ElemCache *cache);
 void imprimeRam(int *ram);
-void imprimeCache(ElemCache *cache);
+void imprimeCacheHorizontal(ElemCache cache[QTDCPU][LENCACHE]);
+void imprimeCache(ElemCache cache[QTDCPU][LENCACHE]);
 void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int i, int *vetfifo, int *l);
 void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i);
 int randomInt(int min, int max);
 int *gerarAcessos(int n, int *ram, int *modifica);
 void iniciaRam(int *ram);
-void iniciaCache(ElemCache *cache);
+void iniciaCache(ElemCache cache[QTDCPU][LENCACHE]);
 void imprimeSequencia(int *acessos, int *modifica, int n);
 
 int main()
@@ -42,7 +44,7 @@ int main()
   srand(time(NULL));
 
   int ram[LENRAM];
-  ElemCache cache[QUANTIDADEPROCESSADORES][LENCACHE];
+  ElemCache cache[QTDCPU][LENCACHE];
   int vet[LENRAM];
   iniciaRam(ram);
 
@@ -51,14 +53,16 @@ int main()
   // acessos = gerarAcessos(aux, ram, modifica);
 
   // inicia todos os processadores
-  for (i = 0; i < QUANTIDADEPROCESSADORES; i++)
-    iniciaCache(cache[i]);
+  iniciaCache(cache);
 
-  printf("Digite a quantidade de acessos que deseja fazer: ");
-  scanf("%d", &n);
-  int acessos[n][2];
+  // imprimeCache(cache);
+  imprimeCacheHorizontal(cache);
 
-  leituraAcessos(acessos, n);
+  // printf("Digite a quantidade de acessos que deseja fazer: ");
+  // scanf("%d", &n);
+  // int acessos[n][3];
+
+  // leituraAcessos(n, acessos);
 
   // imprimeSequencia(acessos, modifica, aux);
   // // imprimeRam(ram);
@@ -98,14 +102,15 @@ int main()
   // // system("pause");
 }
 
-void eituraAcessos(int **acessos, int n)
+void leituraAcessos(int n, int acessos[n][3])
 {
   int i;
 
   for (i = 0; i < n; i++)
   {
-    printf("Digite o %d° acesso a memoria e o processador (%d a %d) que realizar o acesso, nesse formado ex: 456, 1: ", i + 1, 0, LENRAM);
-    scanf("%d %d", &acessos[i][0], &acessos[i][1]);
+    printf("Digite o %d° acesso a memoria (de %d a %d) e o processador (de %d a %d) que deve realizar o acesso e se o dado vai ser modificado (1: sim, 0: não), nesse formado ex: 456 1 0: ", i + 1, 0, LENRAM, 1, QTDCPU);
+    scanf("%d %d", &acessos[i][0], &acessos[i][1], &acessos[i][2]);
+    acessos[i][2] -= 1;
   }
 }
 
@@ -171,24 +176,75 @@ void imprimeRam(int *ram)
   printf("\n");
 }
 
-// função para imprimir a cache
-void imprimeCache(ElemCache *cache)
+void imprimeCacheHorizontal(ElemCache cache[QTDCPU][LENCACHE])
 {
-  printf("----- CACHE %d -----\n", contCacheImp++);
-  // percorre todos os blocos da cache
-  for (int i = 0; i < LENCACHE; i++)
+  int i, j, k;
+  for (i = 0; i < QTDCPU; i++)
   {
-    // só imprime se estiver ocupada
-    if (cache[i].ocupada == 1)
+    if (i == QTDCPU - 1)
+      printf("----- PROCESSADOR %d -------", i + 1);
+    else if (i > 0)
+      printf("----- PROCESSADOR %d -------+", i + 1);
+    else
+      printf("----- PROCESSADOR %d -------+", i + 1);
+  }
+  printf("\n");
+  for (i = 0; i < LENCACHE; i++)
+  {
+    for (j = 0; j < QTDCPU; j++)
     {
-      // imprime o valor da linha
-      printf("linha %d: ", i + 1);
-      // imprime todos os elementos do bloco
-      for (int j = 0; j < BLOCO; j++)
+      if (cache[j][i].ocupada == 1)
       {
-        printf("%4d ", cache[i].elemento[j]);
+        if (j != 0)
+          printf("|");
+        printf("l %2d: ", i + 1);
+        for (k = 0; k < BLOCO; k++)
+        {
+          printf("%4d ", cache[j][i].elemento[k]);
+          if (k == BLOCO - 1)
+            printf("%c", cache[j][i].marcador);
+        }
       }
-      printf("\n");
+      else
+      {
+        if (j != 0)
+          printf("|");
+        printf("l %2d: ", i + 1);
+        for (k = 0; k < BLOCO; k++)
+        {
+          printf("     ");
+          if (k == BLOCO - 1)
+            printf("%c", cache[j][i].marcador);
+        }
+      }
+    }
+    printf("\n");
+  }
+  printf("\n");
+}
+// função para imprimir a cache
+void imprimeCache(ElemCache cache[QTDCPU][LENCACHE])
+{
+  int i, j, k;
+  for (i = 0; i < QTDCPU; i++)
+  {
+    printf("----- PROCESSADOR %d -----\n", i + 1);
+    // printf("----- CACHE %d -----\n", contCacheImp++);
+    // percorre todos os blocos da cache
+    for (j = 0; j < LENCACHE; j++)
+    {
+      // só imprime se estiver ocupada
+      if (cache[i][j].ocupada == 1)
+      {
+        // imprime o valor da linha
+        printf("linha %2d: ", j + 1);
+        // imprime todos os elementos do bloco
+        for (k = 0; k < BLOCO; k++)
+        {
+          printf("%4d ", cache[i][j].elemento[k]);
+        }
+        printf("\n");
+      }
     }
   }
 }
@@ -293,7 +349,7 @@ void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int i, int *v
     miss++;
   }
   // imprimo o estado atual da cache
-  imprimeCache(cache);
+  // imprimeCache(cache);
   // imprimo a quantidade de hit e miss
   printf("\nHIT: %d MISS: %d\n", hit, miss);
 }
@@ -379,7 +435,7 @@ void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i)
     miss++;
   }
   // imprimo o estado atual da cache
-  imprimeCache(cache);
+  // imprimeCache(cache);
   // imprimo a quantidade de hit e miss
   printf("\nHIT: %d MISS: %d\n", hit, miss);
 }
@@ -415,20 +471,26 @@ void iniciaRam(int *ram)
 }
 
 // inicia memoria cache
-void iniciaCache(ElemCache *cache)
+void iniciaCache(ElemCache cache[QTDCPU][LENCACHE])
 {
-  for (int i = 0; i < LENCACHE; i++)
+  int i, j, k, cont2 = 0;
+  for (i = 0; i < QTDCPU; i++)
   {
-    // todos os blocos da cache são definidos como vazio
-    cache[i].ocupada = 0;
-    for (int j = 0; j < BLOCO; j++)
+    for (j = 0; j < LENCACHE; j++)
     {
-      // os elementos recebem valor -1 inicialmente
-      cache[i].elemento[j] = -1;
-      // o vetor que marcar se o elemento foi modificado ou não recebe valor 0
-      cache[i].m[j] = 0;
-      // e o indice do elemento da RAM recebe o valor -1
-      cache[i].indice[j] = -1;
+      // todos os blocos da cache são definidos como vazio
+      cache[i][j].ocupada = 0;
+      cache[i][j].marcador = ' ';
+      for (k = 0; k < BLOCO; k++)
+      {
+        // os elementos recebem valor -1 inicialmente
+        // cache[i][j].elemento[k] = -1;
+        cache[i][j].elemento[k] = cont2++;
+        // o vetor que marcar se o elemento foi modificado ou não recebe valor 0
+        cache[i][j].m[k] = 0;
+        // e o indice do elemento da RAM recebe o valor -1
+        cache[i][j].indice[k] = -1;
+      }
     }
   }
 }
