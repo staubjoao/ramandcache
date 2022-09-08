@@ -4,14 +4,15 @@
 #include <string.h>
 #include <locale.h>
 
-#define BLOCO 4
-#define LENRAM 1024
-#define LENCACHE 32
-#define QTDCPU 4
+#define BLOCO 2
+#define LENRAM 16
+#define LENCACHE 4
+#define QTDCPU 2
 #define NUMACESSOMIN 32
 #define NUMACESSOMAX 50
 
-int contCacheImp = 1, hit = 0, miss = 0, modVet[10] = {1, 0, 0, 0, 1, 0, 0, 1, 1, 0};
+int contCacheImp = 1, modVet[10] = {1, 0, 0, 0, 1, 0, 0, 1, 1, 0};
+int read_hit = 0, read_miss = 0, write_miss = 0, write_hit = 0;
 int cont = 0;
 
 typedef struct
@@ -29,7 +30,7 @@ int verificaCache(ElemCache *cache);
 void imprimeRam(int *ram);
 void imprimeCacheHorizontal(ElemCache cache[QTDCPU][LENCACHE]);
 void imprimeCache(ElemCache cache[QTDCPU][LENCACHE]);
-void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int i, int *vetfifo, int *l);
+void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int *l, int matfifo[QTDCPU][LENCACHE]);
 void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i);
 int randomInt(int min, int max);
 int *gerarAcessos(int n, int *ram, int *modifica);
@@ -44,7 +45,7 @@ int main()
   srand(time(NULL));
 
   int ram[LENRAM];
-  ElemCache cache[QTDCPU][LENCACHE];
+  ElemCache caches[QTDCPU][LENCACHE];
   int vet[LENRAM];
   iniciaRam(ram);
 
@@ -53,16 +54,39 @@ int main()
   // acessos = gerarAcessos(aux, ram, modifica);
 
   // inicia todos os processadores
-  iniciaCache(cache);
+  iniciaCache(caches);
 
+  imprimeRam(ram);
   // imprimeCache(cache);
-  imprimeCacheHorizontal(cache);
 
   // printf("Digite a quantidade de acessos que deseja fazer: ");
   // scanf("%d", &n);
-  // int acessos[n][3];
+  n = 4;
+  int acessos[n][3];
+  acessos[0][0] = 0;
+  acessos[0][1] = 0;
+  acessos[0][2] = 0;
+  acessos[1][0] = 0;
+  acessos[1][1] = 1;
+  acessos[1][2] = 0;
+  acessos[2][0] = 14;
+  acessos[2][1] = 0;
+  acessos[2][2] = 0;
+  acessos[3][0] = 14;
+  acessos[3][1] = 1;
+  acessos[3][2] = 0;
 
   // leituraAcessos(n, acessos);
+  int matfifo[QTDCPU][LENCACHE];
+
+  int l = 0;
+
+  for (i = 0; i < n; i++)
+  {
+    fifo(acessos, ram, caches, i, &l, matfifo);
+    // imprimeCacheHorizontal(caches);
+    imprimeCache(caches);
+  }
 
   // imprimeSequencia(acessos, modifica, aux);
   // // imprimeRam(ram);
@@ -96,8 +120,6 @@ int main()
   //   }
   // }
 
-  // // imprimeRam(ram);
-
   // printf("\n\nHIT: %d MISS: %d\n", hit, miss);
   // // system("pause");
 }
@@ -109,6 +131,7 @@ void leituraAcessos(int n, int acessos[n][3])
   for (i = 0; i < n; i++)
   {
     printf("Digite o %d° acesso a memoria (de %d a %d) e o processador (de %d a %d) que deve realizar o acesso e se o dado vai ser modificado (1: sim, 0: não), nesse formado ex: 456 1 0: ", i + 1, 0, LENRAM, 1, QTDCPU);
+    fflush(stdin);
     scanf("%d %d", &acessos[i][0], &acessos[i][1], &acessos[i][2]);
     acessos[i][2] -= 1;
   }
@@ -140,6 +163,31 @@ int verificaCache(ElemCache *cache)
   }
   // caso nenhum bloco esteja vazio retorna -1
   return -1;
+}
+
+int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int op)
+{
+  int i, j, k;
+  for (i = 0; i < QTDCPU; i++)
+  {
+    if (i != cache)
+    {
+      for (j = 0; j < LENCACHE; j++)
+      {
+        for (k = 0; k < BLOCO; k++)
+        {
+          if (caches[i][j].indice[k] == elemento)
+          {
+            if (op == 1 && caches[i][j].marcador == 'E')
+            {
+              printf("nsei\n");
+              caches[i][j].marcador = 'C';
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 // função que varre a cache
@@ -265,179 +313,101 @@ int removePrimeiro(int *p)
 }
 
 // algoritmos de substituição FIFO
-void fifo(int *acessos, int *ram, ElemCache *cache, int *modifica, int i, int *vetfifo, int *l)
+void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int *l, int matfifo[QTDCPU][LENCACHE])
 {
   int mod, j, k, len, indiceCache, aux, z, x, ale;
   // verifico se o valor deve ser modificado
-  if (modifica[i] == 0)
+  if (acessos[i][2] == 0)
   {
     // não é modificado, imprimo um guia para validar a execução
-    printf("Acesso ao valor, na RAM, %d no indice %d:\n", ram[acessos[i]], acessos[i]);
+    printf("Acesso ao valor, na RAM, %d no indice %d, pelo processador %d:\n", ram[acessos[i][0]], acessos[i][0], acessos[i][1] + 1);
   }
   else
   {
     // é modificado, gera um numero aleatorio e imprimo um guia para validar a execução
     ale = randomInt(100, 1000 + LENRAM);
-    printf("Acesso ao valor, na RAM, %d no indice %d, valor modificado é %d:\n", ram[acessos[i]], acessos[i], ale);
+    printf("Acesso ao valor, na RAM, %d no indice %d, pelo processador %d, valor modificado é %d:\n", ram[acessos[i][0]], acessos[i][0], acessos[i][1] + 1, ale);
   }
   // resto da divisão do indice do acesso pelo tamanho do bloco
-  mod = acessos[i] % BLOCO;
+  mod = acessos[i][0] % BLOCO;
   // variavel que vai delimitar o for para preencher o bloco da cache
-  len = (acessos[i] + BLOCO) - mod;
+  len = (acessos[i][0] + BLOCO) - mod;
   // verifica o primeiro bloco não ocupado da cache, caso não exista retorna -1
-  aux = verificaCache(cache);
+  aux = verificaCache(caches[i]);
   // varre a cache procurando o elemento que está na fila, caso ele esteja na cache
   // retorna o inidice que ele está que fica armazenado em z e em x o indice do bloco
-  z = varreCache(cache, acessos[i], &x);
+  z = varreCache(caches[i], acessos[i][0], &x);
 
-  // o elemento está na cache
+  //  o elemento está na cache
   if (z > -1)
   {
     // verifico se esse elemento deve ser modificado
-    if (modifica[i] == 1)
+    if (acessos[i][2] == 1)
+    {
       // modifico o elemento e marca o elemento como modificado
-      cache[z].elemento[x] = ale, cache[z].m[x] = 1;
+      caches[acessos[i][1]][z].elemento[x] = ale, caches[acessos[i][1]][z].m[x] = 1;
+    }
+    else
+      read_hit++;
 
-    printf("Valor na cache %d:\n", cache[z].elemento[x]);
-    // conto 1 hit
-    hit++;
+    printf("Valor na cache %d:\n", caches[acessos[i][1]][z].elemento[x]);
   }
   // o elemento ñ está na cache
   else
   {
-    // se aux é maior que -1 significa que existe um bloco(s) disponivel na cache
+    // se aux é maior que -1 significa que existe ao menos um bloco disponivel na cache
     if (aux > -1)
     {
+      read_miss++;
       // indiceCache vai receber o valor que vamos utilizar na cache
       indiceCache = aux;
       // vet fifo recebe o valor da posição 0
-      vetfifo[*l] = aux;
+      matfifo[acessos[i][1]][*l] = aux;
       // incrementa o indice do vetor para realizar o fifo
       *l = *l + 1;
       // define o bloco da cache como ocupado
-      cache[indiceCache].ocupada = 1;
+      caches[acessos[i][1]][indiceCache].ocupada = 1;
     }
     else
     {
       // indiceCache vai receber o valor que vamos utilizar na cache
       // aqui esse valor vai ser o primeiro elemento do vetor vetfifo
-      indiceCache = removePrimeiro(vetfifo);
+      // indiceCache = removePrimeiro(caches[acessos[i][1]]->fifo);
       // chama a função writeBack para atualizar os valores na RAM
-      writeBack(cache, ram, indiceCache);
+      writeBack(caches[acessos[i][1]], ram, indiceCache);
     }
+
     // j vai começar do primeiro indice do bloco da RAM e vai até o ultimo indice
-    for (j = (acessos[i] - mod), k = 0; j < len; j++, k++)
+    for (j = (acessos[i][0] - mod), k = 0; j < len; j++, k++)
     {
       // o bloco da cache vai receber os indices do bloco da RAM
-      cache[indiceCache].indice[k] = j;
-      // verifica se o elemento vai ser modificado e se está no elemento do bloco
-      if (modifica[i] == 1 && acessos[i] == j)
+      caches[acessos[i][1]][indiceCache].indice[k] = j;
+      // verifica se o elemento que deve ser modificado e se está no elemento do bloco
+      if (acessos[i][2] == 1 && acessos[i][0] == j)
       {
+        // MUDAR LOGICA AQUI, VARRER OUTRAS CACHES
         // o elemento na cache vai receber um valor aleatorio
-        cache[indiceCache].elemento[k] = ale;
+        caches[acessos[i][1]][indiceCache].elemento[k] = ale;
         // marco que aquele elemento foi modificado
-        cache[indiceCache].m[k] = 1;
+        caches[acessos[i][1]][indiceCache].m[k] = 1;
       }
       else
       {
         // caso o elemento ñ precisa de modificação carrego o indice do bloco da RAM
         // no indice equivalente da cache
-        cache[indiceCache].elemento[k] = ram[j];
+        caches[acessos[i][1]][indiceCache].elemento[k] = ram[j];
+        caches[acessos[i][1]][indiceCache].marcador = 'E';
+        printf("%d %d\n", acessos[i][0], k);
+        // varreCaches(caches, acessos[i][0], acessos[i][1], 1);
+        // printf("%d\n", caches[acessos[i][0]][indiceCache].elemento[k]);
+        read_miss++;
       }
     }
-    // conto um miss
-    miss++;
   }
   // imprimo o estado atual da cache
   // imprimeCache(cache);
   // imprimo a quantidade de hit e miss
-  printf("\nHIT: %d MISS: %d\n", hit, miss);
-}
-
-// acesso aleatorio
-void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i)
-{
-  int mod, j, k, len, indiceCache, aux, z, x, ale;
-
-  // verifico se o valor deve ser modificado
-  if (modifica[i] == 0)
-  {
-    // não é modificado, imprimo um guia para validar a execução
-    printf("Acesso ao valor, na RAM, %d no indice %d:\n", ram[acessos[i]], acessos[i]);
-  }
-  else
-  {
-    // é modificado, gera um numero aleatorio e imprimo um guia para validar a execução
-    ale = randomInt(100, 1000 + LENRAM);
-    printf("Acesso ao valor, na RAM, %d no indice %d, valor modificado é %d:\n", ram[acessos[i]], acessos[i], ale);
-  }
-  // resto da divisão do indice do acesso pelo tamanho do bloco
-  mod = acessos[i] % BLOCO;
-  // variavel que vai delimitar o for para preencher o bloco da cache
-  len = (acessos[i] + BLOCO) - mod;
-  // verifica o primeiro bloco não ocupado da cache, caso não exista retorna -1
-  aux = verificaCache(cache);
-  // varre a cache procurando o elemento que está na fila, caso ele esteja na cache
-  // retorna o inidice que ele está que fica armazenado em z e em x o indice do bloco
-  z = varreCache(cache, acessos[i], &x);
-
-  // o elemento está na cache
-  if (z > -1)
-  {
-    // verifico se esse elemento deve ser modificado
-    if (modifica[i] == 1)
-      // modifico o elemento e marca o elemento como modificado
-      cache[z].elemento[x] = ale, cache[z].m[x] = 1;
-
-    printf("Valor na cache %d:\n", cache[z].elemento[x]);
-    // conto 1 hit
-    hit++;
-  }
-  // o elemento ñ está na cache
-  else
-  {
-    // se aux é maior que -1 significa que existe um bloco(s) disponivel na cache
-    if (aux > -1)
-    {
-      // indiceCache vai receber o valor que vamos utilizar na cache
-      indiceCache = aux;
-      // define o bloco da cache como ocupado
-      cache[indiceCache].ocupada = 1;
-    }
-    else
-    {
-      // indiceCache vai receber o valor que vamos utilizar na cache
-      indiceCache = randomInt(0, LENCACHE - 1);
-      // chama a função writeBack para atualizar os valores na RAM
-      writeBack(cache, ram, indiceCache);
-    }
-    // j vai começar do primeiro indice do bloco da RAM e vai até o ultimo indice
-    for (j = (acessos[i] - mod), k = 0; j < len; j++, k++)
-    {
-      // o bloco da cache vai receber os indices do bloco da RAM
-      cache[indiceCache].indice[k] = j;
-      // verifica se o elemento vai ser modificado e se está no elemento do bloco
-      if (modifica[i] == 1 && acessos[i] == j)
-      {
-        // o elemento na cache vai receber um valor aleatorio
-        cache[indiceCache].elemento[k] = ale;
-        // marco que aquele elemento foi modificado
-        cache[indiceCache].m[k] = 1;
-      }
-      else
-      {
-        // caso o elemento ñ precisa de modificação carrego o indice do bloco da RAM
-        // no indice equivalente da cache
-        cache[indiceCache].elemento[k] = ram[j];
-      }
-    }
-    // conto um miss
-    miss++;
-  }
-  // imprimo o estado atual da cache
-  // imprimeCache(cache);
-  // imprimo a quantidade de hit e miss
-  printf("\nHIT: %d MISS: %d\n", hit, miss);
+  // printf("\nHIT: %d MISS: %d\n", hit, miss);
 }
 
 // bloco de código para gerar acessos na memoria RAM
@@ -473,7 +443,7 @@ void iniciaRam(int *ram)
 // inicia memoria cache
 void iniciaCache(ElemCache cache[QTDCPU][LENCACHE])
 {
-  int i, j, k, cont2 = 0;
+  int i, j, k;
   for (i = 0; i < QTDCPU; i++)
   {
     for (j = 0; j < LENCACHE; j++)
@@ -484,8 +454,7 @@ void iniciaCache(ElemCache cache[QTDCPU][LENCACHE])
       for (k = 0; k < BLOCO; k++)
       {
         // os elementos recebem valor -1 inicialmente
-        // cache[i][j].elemento[k] = -1;
-        cache[i][j].elemento[k] = cont2++;
+        cache[i][j].elemento[k] = -1;
         // o vetor que marcar se o elemento foi modificado ou não recebe valor 0
         cache[i][j].m[k] = 0;
         // e o indice do elemento da RAM recebe o valor -1
