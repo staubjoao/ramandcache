@@ -62,20 +62,26 @@ int main()
 
   // printf("Digite a quantidade de acessos que deseja fazer: ");
   // scanf("%d", &n);
-  n = 4;
+  n = 6;
   int acessos[n][3];
   acessos[0][0] = 0;
   acessos[0][1] = 0;
-  acessos[0][2] = 1;
+  acessos[0][2] = 0;
   acessos[1][0] = 0;
-  acessos[1][1] = 1;
+  acessos[1][1] = 0;
   acessos[1][2] = 1;
-  acessos[2][0] = 14;
+  acessos[2][0] = 10;
   acessos[2][1] = 0;
   acessos[2][2] = 1;
   acessos[3][0] = 14;
-  acessos[3][1] = 1;
+  acessos[3][1] = 0;
   acessos[3][2] = 1;
+  acessos[4][0] = 5;
+  acessos[4][1] = 0;
+  acessos[4][2] = 8;
+  acessos[5][0] = 13;
+  acessos[5][1] = 0;
+  acessos[5][2] = 0;
 
   // leituraAcessos(n, acessos);
   int matfifo[QTDCPU][LENCACHE];
@@ -90,7 +96,7 @@ int main()
   }
 
   // imprimeSequencia(acessos, modifica, aux);
-  // // imprimeRam(ram);
+  imprimeRam(ram);
   // int vetfifo[LENCACHE], l = 0;
 
   // for (i = 0; i < aux; i++)
@@ -121,8 +127,8 @@ int main()
   //   }
   // }miss
 
-  // printf("\n\nHIT: %d MISS: %d\n", hit, miss);
   // // system("pause");
+  // printf("\n\nHIT: %d MISS: %d\n", hit, miss);
 }
 
 void leituraAcessos(int n, int acessos[n][3])
@@ -179,12 +185,12 @@ int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int
         {
           if (caches[i][j].indice[k] == elemento)
           {
-            if (op == 1 && (caches[i][j].marcador == 'E' || caches[i][j].marcador == 'C'))
+            if (op == 1 && (caches[i][j].marcador == 'E' || caches[i][j].marcador == 'C') && cache != i)
             {
               caches[i][j].marcador = 'C';
               *marcar_volta = 1;
             }
-            else if (op == 1 && caches[i][j].marcador == 'M')
+            else if (op == 1 && (caches[i][j].marcador == 'M' || caches[i][j].marcador == 'C' || caches[i][j].marcador == 'E'))
               caches[i][j].marcador = 'I';
           }
         }
@@ -203,7 +209,7 @@ int varreCache(ElemCache *cache, int elemento, int *b)
     for (int j = 0; j < BLOCO; j++)
     {
       // caso o elemento do bloco seja igual ao parametro elemento
-      if (cache[i].indice[j] == elemento)
+      if (cache[i].indice[j] == elemento && cache[i].marcador != 'I')
       {
         // o ponteiro de b recebe o indice do bloco que esse elemento se encotra
         *b = j;
@@ -318,7 +324,7 @@ int removePrimeiro(int *p)
 // algoritmos de substituição FIFO
 void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int *l, int matfifo[QTDCPU][LENCACHE])
 {
-  int mod, j, k, len, indiceCache, aux, z, x, ale, marcar_volta;
+  int mod, j, k, len, indiceCache, aux, z, x, ale, marcar_volta = 0;
   // verifico se o valor deve ser modificado
   if (acessos[i][2] == 0)
   {
@@ -348,7 +354,11 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
     if (acessos[i][2] == 1)
     {
       // modifico o elemento e marca o elemento como modificado
-      caches[acessos[i][1]][z].elemento[x] = ale, caches[acessos[i][1]][z].m[x] = 1;
+      caches[acessos[i][1]][z].elemento[x] = ale;
+      caches[acessos[i][1]][z].m[x] = 1;
+      caches[acessos[i][1]][z].marcador = 'M';
+      varreCaches(caches, acessos[i][0], acessos[i][1], 1, &marcar_volta);
+      write_hit++;
     }
     else
       read_hit++;
@@ -361,7 +371,10 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
     // se aux é maior que -1 significa que existe ao menos um bloco disponivel na cache
     if (aux > -1)
     {
-      read_miss++;
+      if (acessos[i][2] == 1)
+        write_miss++;
+      else
+        read_miss++;
       // indiceCache vai receber o valor que vamos utilizar na cache
       indiceCache = aux;
       // vet fifo recebe o valor da posição 0
@@ -375,7 +388,7 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
     {
       // indiceCache vai receber o valor que vamos utilizar na cache
       // aqui esse valor vai ser o primeiro elemento do vetor vetfifo
-      // indiceCache = removePrimeiro(caches[acessos[i][1]]->fifo);
+      indiceCache = removePrimeiro(matfifo[acessos[i][1]]);
       // chama a função writeBack para atualizar os valores na RAM
       writeBack(caches[acessos[i][1]], ram, indiceCache);
     }
