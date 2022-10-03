@@ -64,18 +64,18 @@ int main()
   // scanf("%d", &n);
   n = 6;
   int acessos[n][3];
-  acessos[0][0] = 0;
+  acessos[0][0] = 10;
   acessos[0][1] = 0;
   acessos[0][2] = 0;
-  acessos[1][0] = 0;
-  acessos[1][1] = 0;
+  acessos[1][0] = 10;
+  acessos[1][1] = 1;
   acessos[1][2] = 1;
   acessos[2][0] = 10;
-  acessos[2][1] = 0;
+  acessos[2][1] = 1;
   acessos[2][2] = 1;
-  acessos[3][0] = 14;
+  acessos[3][0] = 10;
   acessos[3][1] = 0;
-  acessos[3][2] = 1;
+  acessos[3][2] = 0;
   acessos[4][0] = 5;
   acessos[4][1] = 0;
   acessos[4][2] = 8;
@@ -134,7 +134,6 @@ int main()
 void leituraAcessos(int n, int acessos[n][3])
 {
   int i;
-
   for (i = 0; i < n; i++)
   {
     printf("Digite o %d° acesso a memoria (de %d a %d), o processador (de %d a %d) que deve realizar o acesso e se o dado vai ser modificado (1: sim, 0: não), nesse formado ex: 456 1 0: ", i + 1, 0, LENRAM, 1, QTDCPU);
@@ -172,25 +171,40 @@ int verificaCache(ElemCache caches[LENCACHE])
   return -1;
 }
 
+// função que varre as cahces procurando o marcados do elemento em questão
 int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int op, int *marcar_volta)
 {
   int i, j, k;
+  // percorre todas as caches
   for (i = 0; i < QTDCPU; i++)
   {
+    // caso não seja a cache em que o elemento está
+    // deve verificar
     if (i != cache)
     {
+      // percorre todos os blocos da cache
       for (j = 0; j < LENCACHE; j++)
       {
+        // percorre todos os elementos do bloco
         for (k = 0; k < BLOCO; k++)
         {
+          // verifica se o elemento em questão é o elemento buscado
           if (caches[i][j].indice[k] == elemento)
           {
+            // caso for
+            // verifica se ele não vai ser modificado, no caso op == 1
+            // marcador deve ser igual a exclusivo ou compartilhado e cache deve ser diferente do index atual
             if (op == 1 && (caches[i][j].marcador == 'E' || caches[i][j].marcador == 'C') && cache != i)
             {
+              // caso entre aqui marca como compartilhado
               caches[i][j].marcador = 'C';
+              // e retonar o marcador por referencia
               *marcar_volta = 1;
             }
-            else if (op == 1 && (caches[i][j].marcador == 'M' || caches[i][j].marcador == 'C' || caches[i][j].marcador == 'E'))
+            // verifica se vai ser modificaldo, no caso op == 0
+            // marcador deve ser igual a modificado ou compartilhado ou excelusivo
+            else if (op == 0 && (caches[i][j].marcador == 'M' || caches[i][j].marcador == 'C' || caches[i][j].marcador == 'E'))
+              // caso entre aqui marca esse bloco todo como invalido
               caches[i][j].marcador = 'I';
           }
         }
@@ -279,6 +293,7 @@ void imprimeCacheHorizontal(ElemCache cache[QTDCPU][LENCACHE])
   }
   printf("\n");
 }
+
 // função para imprimir a cache
 void imprimeCache(ElemCache cache[QTDCPU][LENCACHE])
 {
@@ -356,7 +371,9 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
       // modifico o elemento e marca o elemento como modificado
       caches[acessos[i][1]][z].elemento[x] = ale;
       caches[acessos[i][1]][z].m[x] = 1;
+      // marco como modificado
       caches[acessos[i][1]][z].marcador = 'M';
+      // varre a cache, caso o elemento esteja em algum outro bloco deve ser marcado como indisponivel
       varreCaches(caches, acessos[i][0], acessos[i][1], 1, &marcar_volta);
       write_hit++;
     }
@@ -365,15 +382,18 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
 
     printf("Valor na cache %d:\n", caches[acessos[i][1]][z].elemento[x]);
   }
-  // o elemento ñ está na cache
+  // o elemento não está na cache
   else
   {
     // se aux é maior que -1 significa que existe ao menos um bloco disponivel na cache
     if (aux > -1)
     {
+      // caso o elemento deve ser modificado
       if (acessos[i][2] == 1)
+        // marca como uma leitura falha
         write_miss++;
       else
+        // caso não deve ser modificado, marca como leitura falha
         read_miss++;
       // indiceCache vai receber o valor que vamos utilizar na cache
       indiceCache = aux;
@@ -405,19 +425,24 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
         caches[acessos[i][1]][indiceCache].elemento[k] = ale;
         // marco que aquele elemento foi modificado
         caches[acessos[i][1]][indiceCache].m[k] = 1;
+        // marco como modificado para o FIFO
         caches[acessos[i][1]][indiceCache].marcador = 'M';
-        varreCaches(caches, acessos[i][0], acessos[i][1], 1, &marcar_volta);
+        // varre a cache para invalidar elementos em outras caches
+        varreCaches(caches, acessos[i][0], acessos[i][1], 0, &marcar_volta);
       }
       else
       {
-        // caso o elemento ñ precisa de modificação carrego o indice do bloco da RAM
+        // caso o elemento não precisa de modificação carrego o indice do bloco da RAM
         // no indice equivalente da cache
         caches[acessos[i][1]][indiceCache].elemento[k] = ram[j];
         if (acessos[i][2] != 1)
         {
+          // marca ele como exclusivo
           caches[acessos[i][1]][indiceCache].marcador = 'E';
+          // varre a cache verificando se ele já está marcado como exclusivo em outro elementos e marca como compartilhado
           varreCaches(caches, acessos[i][0], acessos[i][1], 1, &marcar_volta);
           if (marcar_volta)
+            // caso ele exista marca como compartilhado
             caches[acessos[i][1]][indiceCache].marcador = 'C';
         }
       }
