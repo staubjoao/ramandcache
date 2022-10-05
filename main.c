@@ -4,10 +4,10 @@
 #include <string.h>
 #include <locale.h>
 
-#define BLOCO 2
+#define BLOCO 4
 #define LENRAM 16
 #define LENCACHE 4
-#define QTDCPU 2
+#define QTDCPU 4
 #define NUMACESSOMIN 32
 #define NUMACESSOMAX 50
 
@@ -31,10 +31,10 @@ int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int
 void imprimeRam(int *ram);
 void imprimeCacheHorizontal(ElemCache cache[QTDCPU][LENCACHE]);
 void imprimeCache(ElemCache cache[QTDCPU][LENCACHE]);
-void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int *l, int matfifo[QTDCPU][LENCACHE]);
+void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE]);
 void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i);
 int randomInt(int min, int max);
-int *gerarAcessos(int n, int *ram, int *modifica);
+int gerarAcessos(int n, int acessos[n][3]);
 void iniciaRam(int *ram);
 void iniciaCache(ElemCache cache[QTDCPU][LENCACHE]);
 void imprimeSequencia(int *acessos, int *modifica, int n);
@@ -62,35 +62,38 @@ int main()
 
   // printf("Digite a quantidade de acessos que deseja fazer: ");
   // scanf("%d", &n);
-  n = 6;
+  n = 80;
   int acessos[n][3];
-  acessos[0][0] = 10;
-  acessos[0][1] = 0;
-  acessos[0][2] = 0;
-  acessos[1][0] = 10;
-  acessos[1][1] = 1;
-  acessos[1][2] = 1;
-  acessos[2][0] = 10;
-  acessos[2][1] = 1;
-  acessos[2][2] = 1;
-  acessos[3][0] = 10;
-  acessos[3][1] = 0;
-  acessos[3][2] = 0;
-  acessos[4][0] = 5;
-  acessos[4][1] = 0;
-  acessos[4][2] = 8;
-  acessos[5][0] = 13;
-  acessos[5][1] = 0;
-  acessos[5][2] = 0;
+  gerarAcessos(n, acessos);
+  // acessos[0][0] = 10;
+  // acessos[0][1] = 0;
+  // acessos[0][2] = 0;
+  // acessos[1][0] = 10;
+  // acessos[1][1] = 1;
+  // acessos[1][2] = 1;
+  // acessos[2][0] = 10;
+  // acessos[2][1] = 1;
+  // acessos[2][2] = 1;
+  // acessos[3][0] = 10;
+  // acessos[3][1] = 0;
+  // acessos[3][2] = 0;
+  // acessos[4][0] = 5;
+  // acessos[4][1] = 0;
+  // acessos[4][2] = 8;
+  // acessos[5][0] = 13;
+  // acessos[5][1] = 0;
+  // acessos[5][2] = 0;
 
   // leituraAcessos(n, acessos);
   int matfifo[QTDCPU][LENCACHE];
 
-  int l = 0;
+  int l[LENCACHE];
+  for (i = 0; i < LENCACHE; i++)
+    l[i] = 0;
 
   for (i = 0; i < n; i++)
   {
-    fifo(acessos, ram, caches, i, &l, matfifo);
+    fifo(acessos, ram, caches, i, l, matfifo);
     // imprimeCacheHorizontal(caches);
     // imprimeCache(caches);
   }
@@ -337,7 +340,7 @@ int removePrimeiro(int *p)
 }
 
 // algoritmos de substituição FIFO
-void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int *l, int matfifo[QTDCPU][LENCACHE])
+void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE])
 {
   int mod, j, k, len, indiceCache, aux, z, x, ale, marcar_volta = 0;
   // verifico se o valor deve ser modificado
@@ -398,9 +401,9 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
       // indiceCache vai receber o valor que vamos utilizar na cache
       indiceCache = aux;
       // vet fifo recebe o valor da posição 0
-      matfifo[acessos[i][1]][*l] = aux;
+      matfifo[acessos[i][1]][l[acessos[i][1]]] = aux;
       // incrementa o indice do vetor para realizar o fifo
-      *l = *l + 1;
+      l[acessos[i][1]]++;
       // define o bloco da cache como ocupado
       caches[acessos[i][1]][indiceCache].ocupada = 1;
     }
@@ -458,22 +461,19 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
 int randomInt(int min, int max) { return min + rand() % (max + 1 - min); }
 
 // função para gerar acessos aleatorios
-int *gerarAcessos(int n, int *ram, int *modifica)
+int gerarAcessos(int n, int acessos[n][3])
 {
-  int i, *vet;
-  // alocação dinamica de um vetor para gerar os acessos
-  vet = malloc(sizeof(int) * n);
+  int i;
   for (i = 0; i < n; i++)
   {
     // atribuição de um valor aleatorio para acesso na RAM, vai de 0 até o tamanho da RAM - 1
-    vet[i] = randomInt(0, LENRAM - 1);
+    acessos[i][0] = randomInt(0, LENRAM - 1);
+    // atribui o valor da cache que deve fazer o processamento
+    acessos[i][1] = randomInt(0, QTDCPU - 1);
     // se o elemento deve ou não ser modificado, um vetor global com os seguinte elementos:
     // {1, 0, 0, 0, 1, 0, 0, 1, 1, 0} onde 1 é para modificar e 0 para não modificar
-    modifica[i] = modVet[randomInt(0, 9)];
+    acessos[i][2] = modVet[randomInt(0, 9)];
   }
-
-  // retorna o vetor de acessos
-  return vet;
 }
 
 // inicia memora RAM
