@@ -94,44 +94,8 @@ int main()
   for (i = 0; i < n; i++)
   {
     fifo(acessos, ram, caches, i, l, matfifo);
-    // imprimeCacheHorizontal(caches);
-    // imprimeCache(caches);
   }
-
-  // imprimeSequencia(acessos, modifica, aux);
   imprimeRam(ram);
-  // int vetfifo[LENCACHE], l = 0;
-
-  // for (i = 0; i < aux; i++)
-  // {
-  //   if (verificaCache(cache) != -1)
-  //   {
-  //     fifo(acessos, ram, cache, modifica, i, vetfifo, &l);
-  //   }
-  //   else
-  //   {
-  //     do
-  //     {
-  //       printf("Qual método de subistituição deseja utilizar?\n1 - aleatorio\n2 - fifo\nDigite a opção: ");
-  //       scanf("%d", &op);
-  //       if (op == 1)
-  //       {
-  //         aleatorio(acessos, ram, cache, modifica, i);
-  //       }
-  //       else if (op == 2)
-  //       {
-  //         fifo(acessos, ram, cache, modifica, i, vetfifo, &l);
-  //       }
-  //       else
-  //       {
-  //         printf("Opção invalida!\n");
-  //       }
-  //     } while (op != 1 && op != 2);
-  //   }
-  // }miss
-
-  // // system("pause");
-  // printf("\n\nHIT: %d MISS: %d\n", hit, miss);
 }
 
 void leituraAcessos(int n, int acessos[n][3])
@@ -174,6 +138,7 @@ int verificaCache(ElemCache caches[LENCACHE])
   return -1;
 }
 
+// repensar essa função
 // função que varre as cahces procurando o marcados do elemento em questão
 int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int op, int *marcar_volta)
 {
@@ -207,8 +172,11 @@ int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int
             // verifica se vai ser modificaldo, no caso op == 0
             // marcador deve ser igual a modificado ou compartilhado ou excelusivo
             else if (op == 0 && (caches[i][j].marcador == 'M' || caches[i][j].marcador == 'C' || caches[i][j].marcador == 'E'))
+            {
               // caso entre aqui marca esse bloco todo como invalido
               caches[i][j].marcador = 'I';
+              *marcar_volta = 0;
+            }
           }
         }
       }
@@ -450,11 +418,12 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
         }
       }
     }
+    // deve ter mais código aqui
   }
   // imprimo o estado atual da cache
   imprimeCacheHorizontal(caches);
   // imprimo a quantidade de hit e miss
-  printf("\nREAD-HIT: %d READ-MISS: %d WRITE-HIT %d WRITE-MISS %d\n", read_hit, read_miss, write_hit, write_miss);
+  printf("\nREAD-HIT: %d READ-MISS: %d WRITE-HIT %d WRITE-MISS %d soma: %d\n", read_hit, read_miss, write_hit, write_miss, read_hit + read_miss + write_hit + write_miss);
 }
 
 // bloco de código para gerar acessos na memoria RAM
