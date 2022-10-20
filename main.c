@@ -5,7 +5,7 @@
 #include <locale.h>
 
 #define BLOCO 4
-#define LENRAM 16
+#define LENRAM 1024
 #define LENCACHE 4
 #define QTDCPU 4
 #define NUMACESSOMIN 32
@@ -24,14 +24,14 @@ typedef struct
   char marcador;
 } ElemCache;
 
-void leituraAcessos(int n, int acessos[n][3]);
+void leituraAcessos(int n, int **acessos);
 void writeBack(ElemCache *cache, int *ram, int indice);
 int verificaCache(ElemCache caches[LENCACHE]);
 int varreCaches(ElemCache caches[QTDCPU][LENCACHE], int elemento, int cache, int op, int *marcar_volta);
 void imprimeRam(int *ram);
 void imprimeCacheHorizontal(ElemCache cache[QTDCPU][LENCACHE]);
 void imprimeCache(ElemCache cache[QTDCPU][LENCACHE]);
-void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE]);
+void fifo(int **acessos, int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE]);
 void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i);
 int randomInt(int min, int max);
 int gerarAcessos(int n, int **acessos);
@@ -50,67 +50,62 @@ int main()
   int vet[LENRAM];
   iniciaRam(ram);
 
-  // aux = randomInt(NUMACESSOMIN, NUMACESSOMAX);
-  // int modifica[aux];
-  // acessos = gerarAcessos(aux, ram, modifica);
-
   // inicia todos os processadores
   iniciaCache(caches);
 
-  imprimeRam(ram);
-  // imprimeCache(cache);
-
   int **acessos;
-  printf("Você deseja gerar acessos aleatorios (1) ou escrever os acessos (0)");
-  scanf("%d", &op);
 
-  switch (op)
+  do
   {
-  case 1:
-    printf("Digite a quantidade de acessos a ser gerado: ");
-    scanf("%d", &n);
-    acessos = malloc(sizeof(int) * n);
-    for (i = 0; i < n; i++)
-      acessos[i] = malloc(sizeof(int) * 3);
+    printf("Você deseja gerar acessos aleatorios (1) ou escrever os acessos (2)\nDigite a opção: ");
+    scanf("%d", &op);
+    if (op == 1)
+    {
+      printf("Digite a quantidade de acessos a ser gerado: ");
+      scanf("%d", &n);
+    }
+    else if (op == 2)
+    {
+      printf("Digite a quantidade de acesssos a ser digitado: ");
+      scanf("%d", &n);
+    }
+    else
+      printf("Opção invalida\n");
+  } while (op != 1 && op != 2);
+
+  acessos = malloc(sizeof(int *) * n);
+  for (i = 0; i < n; i++)
+    acessos[i] = malloc(3 * sizeof(int));
+  if (op == 1)
     gerarAcessos(n, acessos);
-    break;
+  else if (op == 2)
+    leituraAcessos(n, acessos);
 
-  default:
-    break;
-  }
+  int matfifo[QTDCPU][LENCACHE];
 
+  int l[LENCACHE];
+  for (i = 0; i < LENCACHE; i++)
+    l[i] = 0;
+
+  imprimeRam(ram);
   for (i = 0; i < n; i++)
   {
-    for (int j = 0; j < 3; j++)
-    {
-      printf("%d, ", acessos[i][j]);
-    }
-    printf("\n");
+    fifo(acessos, ram, caches, i, l, matfifo);
   }
-
-  // leituraAcessos(n, acessos);
-  // int matfifo[QTDCPU][LENCACHE];
-
-  // int l[LENCACHE];
-  // for (i = 0; i < LENCACHE; i++)
-  //   l[i] = 0;
-
-  // for (i = 0; i < n; i++)
-  // {
-  //   fifo(acessos, ram, caches, i, l, matfifo);
-  // }
-  // imprimeRam(ram);
+  imprimeRam(ram);
+  for (i = 0; i < n; i++)
+    free(acessos[i]);
+  free(acessos);
 }
 
-void leituraAcessos(int n, int acessos[n][3])
+void leituraAcessos(int n, int **acessos)
 {
   int i;
   for (i = 0; i < n; i++)
   {
-    printf("Digite o %d° acesso a memoria (de %d a %d), o processador (de %d a %d) que deve realizar o acesso e se o dado vai ser modificado (1: sim, 0: não), nesse formado ex: 456 1 0: ", i + 1, 0, LENRAM, 1, QTDCPU);
-    // fflush(stdin);
+    printf("Digite o %d° acesso a memoria (de %d a %d), o processador (de %d a %d) que deve realizar o acesso e se o dado vai ser modificado (1: sim, 0: não), nesse formado ex: %d %d 0: ", i + 1, 0, LENRAM, 1, QTDCPU, randomInt(0, LENRAM - 1), randomInt(1, QTDCPU));
     scanf("%d %d %d", &acessos[i][0], &acessos[i][1], &acessos[i][2]);
-    acessos[i][2] -= 1;
+    acessos[i][1] -= 1;
   }
 }
 
@@ -312,7 +307,7 @@ int removePrimeiro(int *p)
 }
 
 // algoritmos de substituição FIFO
-void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE])
+void fifo(int **acessos, int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE])
 {
   int mod, j, k, len, indiceCache, aux, z, x, ale, marcar_volta = 0;
   // verifico se o valor deve ser modificado
@@ -429,9 +424,12 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
     // deve ter mais código aqui
   }
   // imprimo o estado atual da cache
-  imprimeCacheHorizontal(caches);
+  if (BLOCO > 4 || QTDCPU > 4)
+    imprimeCache(caches);
+  else
+    imprimeCacheHorizontal(caches);
   // imprimo a quantidade de hit e miss
-  printf("\nREAD-HIT: %d READ-MISS: %d WRITE-HIT %d WRITE-MISS %d soma: %d\n", read_hit, read_miss, write_hit, write_miss, read_hit + read_miss + write_hit + write_miss);
+  printf("\nREAD-HIT: %d READ-MISS: %d WRITE-HIT %d WRITE-MISS %d\n", read_hit, read_miss, write_hit, write_miss);
 }
 
 // bloco de código para gerar acessos na memoria RAM
