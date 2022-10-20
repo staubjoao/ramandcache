@@ -34,7 +34,7 @@ void imprimeCache(ElemCache cache[QTDCPU][LENCACHE]);
 void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i, int l[LENCACHE], int matfifo[QTDCPU][LENCACHE]);
 void aleatorio(int *acessos, int *ram, ElemCache *cache, int *modifica, int i);
 int randomInt(int min, int max);
-int gerarAcessos(int n, int acessos[n][3]);
+int gerarAcessos(int n, int **acessos);
 void iniciaRam(int *ram);
 void iniciaCache(ElemCache cache[QTDCPU][LENCACHE]);
 void imprimeSequencia(int *acessos, int *modifica, int n);
@@ -60,42 +60,46 @@ int main()
   imprimeRam(ram);
   // imprimeCache(cache);
 
-  // printf("Digite a quantidade de acessos que deseja fazer: ");
-  // scanf("%d", &n);
-  n = 80;
-  int acessos[n][3];
-  gerarAcessos(n, acessos);
-  // acessos[0][0] = 10;
-  // acessos[0][1] = 0;
-  // acessos[0][2] = 0;
-  // acessos[1][0] = 10;
-  // acessos[1][1] = 1;
-  // acessos[1][2] = 1;
-  // acessos[2][0] = 10;
-  // acessos[2][1] = 1;
-  // acessos[2][2] = 1;
-  // acessos[3][0] = 10;
-  // acessos[3][1] = 0;
-  // acessos[3][2] = 0;
-  // acessos[4][0] = 5;
-  // acessos[4][1] = 0;
-  // acessos[4][2] = 8;
-  // acessos[5][0] = 13;
-  // acessos[5][1] = 0;
-  // acessos[5][2] = 0;
+  int **acessos;
+  printf("Você deseja gerar acessos aleatorios (1) ou escrever os acessos (0)");
+  scanf("%d", &op);
 
-  // leituraAcessos(n, acessos);
-  int matfifo[QTDCPU][LENCACHE];
+  switch (op)
+  {
+  case 1:
+    printf("Digite a quantidade de acessos a ser gerado: ");
+    scanf("%d", &n);
+    acessos = malloc(sizeof(int) * n);
+    for (i = 0; i < n; i++)
+      acessos[i] = malloc(sizeof(int) * 3);
+    gerarAcessos(n, acessos);
+    break;
 
-  int l[LENCACHE];
-  for (i = 0; i < LENCACHE; i++)
-    l[i] = 0;
+  default:
+    break;
+  }
 
   for (i = 0; i < n; i++)
   {
-    fifo(acessos, ram, caches, i, l, matfifo);
+    for (int j = 0; j < 3; j++)
+    {
+      printf("%d, ", acessos[i][j]);
+    }
+    printf("\n");
   }
-  imprimeRam(ram);
+
+  // leituraAcessos(n, acessos);
+  // int matfifo[QTDCPU][LENCACHE];
+
+  // int l[LENCACHE];
+  // for (i = 0; i < LENCACHE; i++)
+  //   l[i] = 0;
+
+  // for (i = 0; i < n; i++)
+  // {
+  //   fifo(acessos, ram, caches, i, l, matfifo);
+  // }
+  // imprimeRam(ram);
 }
 
 void leituraAcessos(int n, int acessos[n][3])
@@ -350,8 +354,6 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
     }
     else
       read_hit++;
-
-    printf("Valor na cache %d:\n", caches[acessos[i][1]][z].elemento[x]);
   }
   // o elemento não está na cache
   else
@@ -377,6 +379,12 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
     }
     else
     {
+      if (acessos[i][2] == 1)
+        // marca como uma leitura falha
+        write_miss++;
+      else
+        // caso não deve ser modificado, marca como leitura falha
+        read_miss++;
       // indiceCache vai receber o valor que vamos utilizar na cache
       // aqui esse valor vai ser o primeiro elemento do vetor vetfifo
       indiceCache = removePrimeiro(matfifo[acessos[i][1]]);
@@ -430,7 +438,7 @@ void fifo(int acessos[][3], int *ram, ElemCache caches[QTDCPU][LENCACHE], int i,
 int randomInt(int min, int max) { return min + rand() % (max + 1 - min); }
 
 // função para gerar acessos aleatorios
-int gerarAcessos(int n, int acessos[n][3])
+int gerarAcessos(int n, int **acessos)
 {
   int i;
   for (i = 0; i < n; i++)
